@@ -1,0 +1,23 @@
+[package]
+name = "struct_zero_egui_derive"
+version = "0.1.0"
+edition = "2024"                           
+description = "macro derive for struct_zero_egui" 
+publish = false # TODO
+repository = "https://github.com/Cyrix126/struct_zero_egui"                                  
+license = "GPL-3.0-only"
+readme = "README.md"                       
+authors = ["Cyrix126 <cyrix126@baermail.fr>"]
+keywords = ["derive", "zero-allocation", "egui"]
+categories = ["derive"]
+include = ["./src"]                       
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0"
+quote = "1.0"
+darling = "0.23"
+proc-macro2 = "1.0"
+convert_case = "0.10"

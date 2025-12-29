@@ -1,0 +1,23 @@
+[package]
+name = "struct_zero_egui"
+version = "0.1.0"
+edition = "2024"
+description = "A derive Trait for structs to display (read only) them with egui without any allocation."
+publish = false
+repository = "https://github.com/Cyrix126/struct_zero_egui"
+license = "GPL-3.0-only"
+readme = "README.md"
+authors = ["Cyrix126 <cyrix126@baermail.fr>"]
+keywords = ["derive", "zero-allocation", "egui"]
+categories = ["derive"]
+
+[dependencies]
+struct_zero_egui_derive = {path = "../struct_zero_egui_derive", optional = true}
+egui = {version="0.33", default-features=false}
+
+[features]
+default=["derive"]
+derive = ["struct_zero_egui_derive"]
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]

@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = [
+  "struct_zero_egui",
+  "struct_zero_egui_derive",
+]

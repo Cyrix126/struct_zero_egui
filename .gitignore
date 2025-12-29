@@ -1,0 +1,14 @@
+/target
+/ra_target
+/feature
+.DS_Store
+rustc-ice-*
+.vscode/
+$cat ~/git/gupax/.gitignore
+/target
+/ra_target
+/feature
+.DS_Store
+rustc-ice-*
+.vscode/
+**/Cargo.lock
