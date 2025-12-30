@@ -6,18 +6,18 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{self, Attribute, Data, Expr};
 
-#[derive(FromAttributes)]
+#[derive(FromAttributes, Debug)]
 #[darling(attributes(egui))]
 struct FieldOpts {
     /// Taken from the name field if None
     /// Will be put before the value and underligned
     /// So in any case a title will appear to describe this value
     /// That's very opiniated
-    #[darling(with = parse_expr::parse_str_literal, map = Some)]
+    #[darling(with = parse_expr::preserve_str_literal, map = Some)]
     name: Option<Expr>,
     /// Add a text on hover mouse
     /// Do not add one if None
-    #[darling(with = parse_expr::parse_str_literal, map = Some)]
+    #[darling(with = parse_expr::preserve_str_literal, map = Some)]
     hover: Option<Expr>,
     /// hide the field, false (so visisble) by default.
     hidden: Option<bool>,
@@ -134,7 +134,7 @@ fn impl_egui_display(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
     let mut fields_struct = vec![];
 
     for (ident, attrs) in fields(&ast.data).into_iter() {
-        let opts: FieldOpts = FieldOpts::from_attributes(attrs).expect("Wrong options");
+        let opts: FieldOpts = FieldOpts::from_attributes(attrs).expect("Wrong attributs on field");
         let FieldParams {
             name,
             hover,
