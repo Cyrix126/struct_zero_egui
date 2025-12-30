@@ -1,10 +1,10 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 use convert_case::{Case, Casing};
-use darling::FromAttributes;
+use darling::{FromAttributes, util::parse_expr};
 use proc_macro2::{Ident, TokenStream};
-use quote::quote;
-use syn::{self, Attribute, Data};
+use quote::{ToTokens, quote};
+use syn::{self, Attribute, Data, Expr};
 
 #[derive(FromAttributes)]
 #[darling(attributes(egui))]
@@ -13,22 +13,24 @@ struct FieldOpts {
     /// Will be put before the value and underligned
     /// So in any case a title will appear to describe this value
     /// That's very opiniated
-    name: Option<String>,
+    #[darling(with = parse_expr::parse_str_literal, map = Some)]
+    name: Option<Expr>,
     /// Add a text on hover mouse
     /// Do not add one if None
-    hover: Option<String>,
+    #[darling(with = parse_expr::parse_str_literal, map = Some)]
+    hover: Option<Expr>,
     /// hide the field, false (so visisble) by default.
     hidden: Option<bool>,
     /// the value u32 is the ratio of the space based on the default spacing.
     spacing: Option<f32>,
 }
 
-struct FieldParams<'a> {
-    name: String,
-    hover: Option<&'a str>,
+struct FieldParams {
+    name: TokenStream,
+    hover: TokenStream,
     hidden: bool,
     /// If Some, add a space beetwen the value and the title
-    spacing: Option<f32>,
+    spacing: TokenStream,
 }
 #[derive(FromAttributes, Debug)]
 #[darling(attributes(egui_display))]
@@ -38,9 +40,12 @@ struct StructOpts {
     pub convert_case: Option<String>,
     /// Title that will represent all the data
     /// If None, No title will be displayed
-    title: Option<String>,
-    hover_enabled: Option<String>,
-    hover_disabled: Option<String>,
+    #[darling(with = parse_expr::preserve_str_literal, map = Some)]
+    title: Option<Expr>,
+    #[darling(with = parse_expr::preserve_str_literal, map = Some)]
+    hover_enabled: Option<Expr>,
+    #[darling(with = parse_expr::preserve_str_literal, map = Some)]
+    hover_disabled: Option<Expr>,
 }
 
 struct GlobalParams<'a> {
@@ -62,8 +67,8 @@ fn opts2global(ast: &'_ syn::DeriveInput) -> GlobalParams<'_> {
             "title struct param should be set if either title_hover_enabled or title_hover_disabled is set"
         );
     }
-    let hover_enabled = option_to_stream(attrs_struct.hover_enabled);
-    let hover_disabled = option_to_stream(attrs_struct.hover_disabled);
+    let hover_enabled = option_to_stream(&attrs_struct.hover_enabled);
+    let hover_disabled = option_to_stream(&attrs_struct.hover_disabled);
     GlobalParams {
         title,
         convert_case,
@@ -105,18 +110,20 @@ fn fields(data: &Data) -> Vec<(&Ident, &Vec<Attribute>)> {
         .collect::<Vec<_>>()
 }
 
-fn get_opts_field<'a>(opts: &'a FieldOpts, ident: &'a Ident, case: Case<'_>) -> FieldParams<'a> {
+fn get_opts_field<'a>(opts: &'a FieldOpts, ident: &'a Ident, case: Case<'_>) -> FieldParams {
     let name = if let Some(n) = &opts.name {
-        n.to_string()
+        n.into_token_stream()
     } else {
-        ident.to_string().to_case(case)
+        ident.to_string().to_case(case).into_token_stream()
     };
+    let hover = option_to_stream(&opts.hover);
+    let spacing = option_to_stream(&opts.spacing);
     let hidden = opts.hidden.unwrap_or_default();
     FieldParams {
         name,
-        hover: opts.hover.as_deref(),
+        hover,
         hidden,
-        spacing: opts.spacing,
+        spacing,
     }
 }
 
@@ -137,18 +144,17 @@ fn impl_egui_display(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
 
         if !hidden {
             let field = ident;
-            let field_hover = option_to_stream(hover);
-            let field_spacing = option_to_stream(spacing);
             fields_struct.push(quote! {
                         struct_zero_egui::FieldParams {
                     name: #name,
                     value: &self.#field,
-                    hover: #field_hover,
-                    spacing: #field_spacing
+                    hover: #hover,
+                    spacing: #spacing
                 }
             });
         }
     }
+
     let return_title = if let Some(title) = global_params.title {
         let hover_enabled = global_params.hover_enabled;
         let hover_disabled = global_params.hover_disabled;
@@ -185,7 +191,7 @@ fn impl_egui_display(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
 }
 
 /// Need to convert to TokenStream, else quote will put it as a litteral with \".
-fn option_to_stream<T: darling::ToTokens>(value: Option<T>) -> TokenStream {
+fn option_to_stream<T: darling::ToTokens>(value: &Option<T>) -> TokenStream {
     if let Some(v) = value {
         quote! {
             Some(#v)
